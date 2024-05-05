@@ -1,43 +1,37 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
+	"hostlerBackend/db"
+	"hostlerBackend/handlers/login"
+
 	"github.com/gorilla/mux"
+	_ "github.com/lib/pq"
 	"github.com/rs/cors"
 )
 
-type Numbers struct {
-	Num1 int `json:"num1"`
-	Num2 int `json:"num2"`
-}
-
-type SumResponse struct {
-	Sum int `json:"sum"`
-}
-
 func main() {
+
+	db, err := db.InitializeDB()
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		// Close the underlying database connection
+		dbSQL, err := db.DB()
+		if err != nil {
+			panic("failed to get database connection")
+		}
+		dbSQL.Close()
+	}()
+
+	fmt.Println("Successfully connected to SQLite database")
+
 	r := mux.NewRouter()
-
-	r.HandleFunc("/sum", func(w http.ResponseWriter, r *http.Request) {
-		var numbers Numbers
-		if err := json.NewDecoder(r.Body).Decode(&numbers); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		sum := Numbers.Num1 + Numbers.Num2
-		sumResponse := SumResponse{Sum: sum}
-
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(sumResponse); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}).Methods("POST")
-
+	loginGroup := r.PathPrefix("/handlers").Subrouter()
+	loginGroup.HandleFunc("/login", login.Login).Methods("POST")
 	// CORS configuration
 	corsHandler := cors.Default().Handler(r)
 
