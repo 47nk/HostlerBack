@@ -3,6 +3,7 @@ package login
 import (
 	"encoding/json"
 	"fmt"
+	"hostlerBackend/handlers/app"
 	"net/http"
 )
 
@@ -11,25 +12,22 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-func Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
+func Login(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req LoginRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		fmt.Printf("%v %v", req.Username, req.Password)
+		var user []User // Assuming you have a User struct
+		if err := a.DB.Where("username = ? AND password = ?", req.Username, req.Password).Find(&user).Error; err != nil {
+			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Login successful"))
 	}
-
-	// Decode the JSON request body
-	var loginRequest LoginRequest
-	err := json.NewDecoder(r.Body).Decode(&loginRequest)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "Error decoding request body: %v", err)
-		return
-	}
-
-	// Print the received username
-	fmt.Println("Received Username:", loginRequest.Username)
-
-	// Respond with a success message
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Login successful for username: %s", loginRequest.Username)
 }
