@@ -2,6 +2,7 @@ package main
 
 import (
 	"hostlerBackend/db"
+	"hostlerBackend/handlers/announcement"
 	"hostlerBackend/handlers/app"
 	"hostlerBackend/handlers/login"
 	"log"
@@ -20,10 +21,15 @@ func main() {
 	app := &app.App{DB: db}
 
 	r := mux.NewRouter()
+	//users group
 	userGroup := r.PathPrefix("/users").Subrouter()
 	userGroup.HandleFunc("/{id}", login.UpdateUser(app)).Methods("PUT")
 	userGroup.HandleFunc("/complex-query", login.ComplexQuery(app)).Methods("GET")
 	userGroup.HandleFunc("/login", login.Login(app)).Methods("POST")
+	//announcement group
+	announcementGroup := r.PathPrefix("/announcements").Subrouter()
+	announcementGroup.HandleFunc("/add", announcement.AddAnnouncement(app)).Methods("POST")
+
 	corsHandler := cors.Default().Handler(r)
 	log.Println("Server is running on port 8080")
 	http.ListenAndServe(":8080", corsHandler)
