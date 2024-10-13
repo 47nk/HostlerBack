@@ -24,12 +24,13 @@ func main() {
 	//users group
 	userGroup := r.PathPrefix("/users").Subrouter()
 	userGroup.HandleFunc("/{id}", login.UpdateUser(app)).Methods("PUT")
-	userGroup.HandleFunc("/complex-query", login.ComplexQuery(app)).Methods("GET")
 	userGroup.HandleFunc("/login", login.Login(app)).Methods("POST")
+	userGroup.HandleFunc("/signup", login.SignUp(app)).Methods("POST")
 	//announcement group
 	announcementGroup := r.PathPrefix("/announcements").Subrouter()
 	announcementGroup.HandleFunc("/add", announcement.AddAnnouncement(app)).Methods("POST")
-
+	announcementGroup.HandleFunc("/get", announcement.GetAnnouncements(app)).Methods("GET")
+	//cors
 	corsHandler := cors.Default().Handler(r)
 	log.Println("Server is running on port 8080")
 	http.ListenAndServe(":8080", corsHandler)
