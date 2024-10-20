@@ -28,7 +28,7 @@ func Login(a *app.App) http.HandlerFunc {
 		}
 
 		var user []User
-		err := a.DB.Where("first_name = ?", req.Username).Find(&user).Error
+		err := a.DB.Where("roll_number = ?", req.Username).Find(&user).Error
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
