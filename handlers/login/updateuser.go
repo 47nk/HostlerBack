@@ -13,30 +13,6 @@ type UpdateUserRequest struct {
 	FirstName string `json:"first_name"`
 }
 
-func ComplexQuery(a *app.App) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var users User
-
-		// Example complex query
-
-		var user User
-		if err := a.DB.Model(&User{}).Where("id = ?", 1).First(&user).Error; err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		fmt.Print(user.FirstName)
-		response, err := json.Marshal(users)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(response)
-	}
-}
-
 func UpdateUser(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req UpdateUserRequest
@@ -49,6 +25,7 @@ func UpdateUser(a *app.App) http.HandlerFunc {
 		id := vars["id"]
 
 		var user User
+		fmt.Println("yesssss")
 		if err := a.DB.First(&user, id).Error; err != nil {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return

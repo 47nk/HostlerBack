@@ -2,9 +2,11 @@ package login
 
 import (
 	"encoding/json"
-	"fmt"
 	"hostlerBackend/handlers/app"
 	"net/http"
+	"time"
+
+	"github.com/golang-jwt/jwt/v4"
 )
 
 type LoginRequest struct {
@@ -20,14 +22,48 @@ func Login(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		fmt.Printf("%v %v", req.Username, req.Password)
-		var user []User // Assuming you have a User struct
-		if err := a.DB.Where("username = ? AND password = ?", req.Username, req.Password).Find(&user).Error; err != nil {
-			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		if req.Username == "" || req.Password == "" {
+			http.Error(w, "invalid payload", http.StatusBadRequest)
 			return
 		}
 
-		w.WriteHeader(http.StatusOK)
+		var user []User
+		err := a.DB.Where("roll_number = ?", req.Username).Find(&user).Error
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		//validate password
+
+		tokenString, err := GenerateJWT(req.Username)
+		if err != nil {
+			http.Error(w, "Error generating token", http.StatusInternalServerError)
+			return
+		}
+		cookie := http.Cookie{
+			Name:     "jwt",
+			Value:    tokenString,
+			Expires:  time.Now().Add(24 * time.Hour),
+			HttpOnly: true,
+			Secure:   false,
+			Path:     "/",
+			SameSite: http.SameSiteLaxMode,
+		}
+
+		http.SetCookie(w, &cookie)
 		w.Write([]byte("Login successful"))
 	}
+}
+func GenerateJWT(username string) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &jwt.RegisteredClaims{
+		Subject:   username,
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+	})
+	tokenString, err := token.SignedString([]byte("your_secret_key"))
+	if err != nil {
+		return "", err
+	}
+	return tokenString, nil
+
 }
