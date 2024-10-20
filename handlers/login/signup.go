@@ -2,16 +2,21 @@ package login
 
 import (
 	"encoding/json"
-	"fmt"
 	"hostlerBackend/handlers/app"
 	"net/http"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type SignupRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username     string `json:"username"`
+	FirstName    string `json:"first_name"`
+	LastName     string `json:"last_name"`
+	RoleId       int64  `json:"role_id"`
+	MobileNumber string `json:"mobile_num"`
+	Password     string `json:"password"`
 }
 
 func SignUp(a *app.App) http.HandlerFunc {
@@ -21,23 +26,29 @@ func SignUp(a *app.App) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-
-		var users []User
-		err := a.DB.Where("first_name = ?", req.Username).Find(&users).Error
-		if err != nil {
-			http.Error(w, "Error quering users", http.StatusInternalServerError)
+		var user User
+		result := a.DB.Where("roll_number = ?", req.Username).First(&user)
+		if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
+			http.Error(w, "Error querying users", http.StatusInternalServerError)
 			return
 		}
-
-		if len(users) != 0 {
+		if result.RowsAffected != 0 {
 			http.Error(w, "User with username already exits", http.StatusInternalServerError)
 			return
 		}
 
 		password, _ := bcrypt.GenerateFromPassword([]byte(req.Password), 14)
-		fmt.Println(password)
+		newUser := User{
+			RollNumber:   req.Username,
+			RoleId:       req.RoleId,
+			FirstName:    req.FirstName,
+			LastName:     req.LastName,
+			MobileNumber: req.MobileNumber,
+			Password:     string(password),
+			CreatedAt:    time.Now(),
+		}
 
-		err = a.DB.Create(&User{FirstName: req.Username}).Error
+		err := a.DB.Create(&newUser).Error
 		if err != nil {
 			http.Error(w, "Error creating user", http.StatusInternalServerError)
 			return
