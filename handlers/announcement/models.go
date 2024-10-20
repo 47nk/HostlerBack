@@ -7,7 +7,7 @@ type Announcement struct {
 	Title       string    `gorm:"size:255;not null" json:"title,omitempty"`
 	Type        string    `gorm:"size:100;not null" json:"type,omitempty"`
 	Description string    `gorm:"type:text" json:"description,omitempty"`
-	CreatedBy   uint      `json:"created_by,omitempty"` // Could be the user ID who creates the announcement
+	CreatedBy   uint      `json:"created_by,omitempty"`
 	CreatedAt   time.Time `json:"created_at,omitempty"`
 	UpdatedAt   time.Time `json:"updated_at,omitempty"`
 	IsActive    bool      `gorm:"default:true" json:"active,omitempty"`

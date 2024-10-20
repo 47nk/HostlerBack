@@ -5,13 +5,13 @@ import (
 )
 
 type User struct {
-	ID           int64     `gorm:"primaryKey;autoIncrement"` // Matches 'bigint' type in PostgreSQL
-	FirstName    string    `gorm:"type:text;not null"`       // Matches 'text' type in PostgreSQL
+	ID           int64     `gorm:"primaryKey;autoIncrement"`
+	FirstName    string    `gorm:"type:text;not null"`
 	LastName     string    `gorm:"type:text;not null"`
 	RollNumber   string    `gorm:"type:text;not null"`
 	MobileNumber string    `gorm:"type:text;not null"`
 	CreatedAt    time.Time `gorm:"type:timestamptz;default:CURRENT_TIMESTAMP"` // Matches 'timestamp with time zone' type
-	UpdatedAt    time.Time `gorm:"type:timestamptz"`                           // Matches 'timestamp with time zone' type                   // Matches 'timestamp with time zone' type
+	UpdatedAt    time.Time `gorm:"type:timestamptz"`
 }
 
 func (User) TableName() string {
@@ -19,7 +19,7 @@ func (User) TableName() string {
 }
 
 type Bill struct {
-	ID           int64   `gorm:"primaryKey;autoIncrement"` // Matches 'bigint' type in PostgreSQL
+	ID           int64   `gorm:"primaryKey;autoIncrement"`
 	UserId       int64   `gorm:"numeric;not null"`
 	Amount       float64 `gorm:"numeric;not null"`
 	BillType     string  `gorm:"type:text;not null"`

@@ -89,7 +89,6 @@ func CreateTransaction(a *app.App) http.HandlerFunc {
 		})
 
 		if err != nil {
-			// Handle the error and return appropriate response to the client
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
