@@ -9,7 +9,7 @@ import (
 )
 
 func InitializeDB() (*gorm.DB, error) {
-	dsn := "host=127.0.0.1 user=postgres password=Naresh@007 dbname=manage port=5432 sslmode=disable"
+	dsn := "host=postgresql://managedb_2jth_user:8VXnkJw36HJJUjP18EUraINNI1esNUBU@dpg-ct60hel2ng1s738q6sog-a/managedb_2jth user=managedb_2jth_user password=8VXnkJw36HJJUjP18EUraINNI1esNUBU dbname=managedb_2jth port=5432 sslmode=disable"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, err
