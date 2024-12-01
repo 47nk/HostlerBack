@@ -22,6 +22,7 @@ func main() {
 	app := &app.App{DB: db}
 
 	r := mux.NewRouter()
+	r.HandleFunc("/test", login.TestAPI()).Methods("GET")
 	//users group
 	userGroup := r.PathPrefix("/users").Subrouter()
 	{

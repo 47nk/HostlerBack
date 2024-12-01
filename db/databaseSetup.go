@@ -24,10 +24,6 @@ func InitializeDB() (*gorm.DB, error) {
 		return nil, err
 	}
 
-	if err := db.AutoMigrate(&User{}); err != nil {
-		return nil, err
-	}
-
 	fmt.Println("Successfully connected to the PostgreSQL database!")
 	return db, nil
 }
