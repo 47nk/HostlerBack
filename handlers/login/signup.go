@@ -58,3 +58,9 @@ func SignUp(a *app.App) http.HandlerFunc {
 
 	}
 }
+
+func TestAPI() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("working fine!"))
+	}
+}
