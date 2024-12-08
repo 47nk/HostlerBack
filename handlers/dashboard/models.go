@@ -8,7 +8,7 @@ type User struct {
 	ID           int64     `gorm:"primaryKey;autoIncrement"`
 	FirstName    string    `gorm:"type:text;not null"`
 	LastName     string    `gorm:"type:text;not null"`
-	RollNumber   string    `gorm:"type:text;not null"`
+	Username     string    `gorm:"type:text;not null"`
 	MobileNumber string    `gorm:"type:text;not null"`
 	CreatedAt    time.Time `gorm:"type:timestamptz;default:CURRENT_TIMESTAMP"` // Matches 'timestamp with time zone' type
 	UpdatedAt    time.Time `gorm:"type:timestamptz"`
@@ -19,11 +19,12 @@ func (User) TableName() string {
 }
 
 type Bill struct {
-	ID           int64   `gorm:"primaryKey;autoIncrement"`
-	UserId       int64   `gorm:"numeric;not null"`
-	Amount       float64 `gorm:"numeric;not null"`
-	BillType     string  `gorm:"type:text;not null"`
-	BillingMonth string  `gorm:"type:text;not null"`
+	ID            int64   `gorm:"primaryKey;autoIncrement"`
+	UserId        int64   `gorm:"numeric;not null"`
+	Amount        float64 `gorm:"numeric;not null"`
+	BillType      string  `gorm:"type:text;not null"`
+	BillingMonth  string  `gorm:"type:text;not null"`
+	PaymentStatus string  `gorm:"type:text;not null"`
 }
 
 func (Bill) TableName() string {
