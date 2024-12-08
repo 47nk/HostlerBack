@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type LoginRequest struct {
@@ -26,15 +27,25 @@ func Login(a *app.App) http.HandlerFunc {
 			http.Error(w, "invalid payload", http.StatusBadRequest)
 			return
 		}
-
+		//fetch user
 		var user []User
-		err := a.DB.Where("roll_number = ?", req.Username).Find(&user).Error
+		err := a.DB.Where("username = ?", req.Username).Find(&user).Error
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
+		if len(user) == 0 {
+			http.Error(w, "No such user", http.StatusInternalServerError)
+			return
+		}
+
 		//validate password
+		err = bcrypt.CompareHashAndPassword([]byte(user[0].Password), []byte(req.Password))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		tokenString, err := GenerateJWT(req.Username)
 		if err != nil {
@@ -52,7 +63,14 @@ func Login(a *app.App) http.HandlerFunc {
 		}
 
 		http.SetCookie(w, &cookie)
-		w.Write([]byte("Login successful"))
+
+		// Set the content type to application/json
+		w.Header().Set("Content-Type", "application/json")
+
+		if err := json.NewEncoder(w).Encode(user); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 func GenerateJWT(username string) (string, error) {
