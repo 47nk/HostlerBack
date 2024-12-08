@@ -56,7 +56,7 @@ func Login(a *app.App) http.HandlerFunc {
 			Name:     "jwt",
 			Value:    tokenString,
 			Expires:  time.Now().Add(24 * time.Hour),
-			HttpOnly: true,
+			HttpOnly: false,
 			Secure:   false,
 			Path:     "/",
 			SameSite: http.SameSiteLaxMode,
