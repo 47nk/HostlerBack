@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"hostlerBackend/db"
 	"hostlerBackend/handlers/announcement"
 	"hostlerBackend/handlers/app"
@@ -9,6 +8,7 @@ import (
 	"hostlerBackend/handlers/login"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/joho/godotenv"
 
@@ -16,13 +16,16 @@ import (
 	"github.com/rs/cors"
 )
 
-func main() {
-	err := godotenv.Load()
-	if err != nil {
-		fmt.Println(err)
-		log.Fatal("Error loading .env file")
+func init() {
+	// Load the .env file only in local development
+	if os.Getenv("RENDER") == "" {
+		err := godotenv.Load(".env")
+		if err != nil {
+			log.Println("No .env file found, skipping...")
+		}
 	}
-
+}
+func main() {
 	db, err := db.InitializeDB()
 	if err != nil {
 		log.Fatal(err)
