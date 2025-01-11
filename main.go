@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"hostlerBackend/db"
 	"hostlerBackend/handlers/announcement"
 	"hostlerBackend/handlers/app"
@@ -9,11 +10,19 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/joho/godotenv"
+
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println(err)
+		log.Fatal("Error loading .env file")
+	}
+
 	db, err := db.InitializeDB()
 	if err != nil {
 		log.Fatal(err)
