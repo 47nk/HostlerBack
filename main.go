@@ -1,46 +1,65 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"hostlerBackend/db"
+	"hostlerBackend/handlers/announcement"
+	"hostlerBackend/handlers/app"
+	"hostlerBackend/handlers/dashboard"
+	"hostlerBackend/handlers/login"
+	"log"
 	"net/http"
+	"os"
+
+	"github.com/joho/godotenv"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 )
 
-type Numbers struct {
-	Num1 int `json:"num1"`
-	Num2 int `json:"num2"`
+func init() {
+	// Load the .env file only in local development
+	if os.Getenv("RENDER") == "" {
+		err := godotenv.Load(".env")
+		if err != nil {
+			log.Println("No .env file found, skipping...")
+		}
+	}
 }
-
-type SumResponse struct {
-	Sum int `json:"sum"`
-}
-
 func main() {
+	db, err := db.InitializeDB()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	app := &app.App{DB: db}
+
 	r := mux.NewRouter()
+	r.HandleFunc("/test", login.TestAPI()).Methods("GET")
+	//users group
+	userGroup := r.PathPrefix("/users").Subrouter()
+	{
+		userGroup.HandleFunc("/{id}", login.UpdateUser(app)).Methods("PUT")
+		userGroup.HandleFunc("/login", login.Login(app)).Methods("POST")
+		userGroup.HandleFunc("/signup", login.SignUp(app)).Methods("POST")
+	}
 
-	r.HandleFunc("/sum", func(w http.ResponseWriter, r *http.Request) {
-		var numbers Numbers
-		if err := json.NewDecoder(r.Body).Decode(&numbers); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+	//announcement group
+	announcementGroup := r.PathPrefix("/announcements").Subrouter()
+	{
+		announcementGroup.HandleFunc("/add", announcement.AddAnnouncement(app)).Methods("POST")
+		announcementGroup.HandleFunc("/get", announcement.GetAnnouncements(app)).Methods("GET")
+	}
 
-		sum := Numbers.Num1 + Numbers.Num2
-		sumResponse := SumResponse{Sum: sum}
+	//dashboard group
+	dashboardGroup := r.PathPrefix("/dashboard").Subrouter()
+	{
+		dashboardGroup.HandleFunc("/get-bills", dashboard.GetBills(app)).Methods("GET")
+		dashboardGroup.HandleFunc("/transaction", dashboard.CreateTransaction(app)).Methods("POST")
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(sumResponse); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}).Methods("POST")
+	}
 
-	// CORS configuration
+	//cors
 	corsHandler := cors.Default().Handler(r)
-
-	fmt.Println("Server is running on port 8080")
+	log.Println("Server is running on port 8080")
 	http.ListenAndServe(":8080", corsHandler)
 }
