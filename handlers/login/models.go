@@ -5,14 +5,14 @@ import (
 )
 
 type User struct {
-	ID           int64     `gorm:"primaryKey;autoIncrement"` // Matches 'bigint' type in PostgreSQL
-	FirstName    string    `gorm:"type:text;not null"`       // Matches 'text' type in PostgreSQL
+	ID           int64     `gorm:"primaryKey;autoIncrement"`
+	FirstName    string    `gorm:"type:text;not null"`
 	LastName     string    `gorm:"type:text;not null"`
-	RollNumber   string    `gorm:"type:text;not null"`
+	Username     string    `gorm:"type:text;not null"`
 	RoleId       int64     `gorm:"type:numeric;not null"`
 	MobileNumber string    `gorm:"type:text;not null"`
-	CreatedAt    time.Time `gorm:"type:timestamptz;default:CURRENT_TIMESTAMP"` // Matches 'timestamp with time zone' type
-	UpdatedAt    time.Time `gorm:"type:timestamptz"`                           // Matches 'timestamp with time zone' type
+	CreatedAt    time.Time `gorm:"type:timestamptz;default:CURRENT_TIMESTAMP"`
+	UpdatedAt    time.Time `gorm:"type:timestamptz"`
 	Password     string    `gorm:"type:text;not null"`
 	Active       bool      `gorm:"type:boolean"`
 }

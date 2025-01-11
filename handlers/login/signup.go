@@ -3,6 +3,7 @@ package login
 import (
 	"encoding/json"
 	"hostlerBackend/handlers/app"
+	"log"
 	"net/http"
 	"time"
 
@@ -27,7 +28,7 @@ func SignUp(a *app.App) http.HandlerFunc {
 			return
 		}
 		var user User
-		result := a.DB.Where("roll_number = ?", req.Username).First(&user)
+		result := a.DB.Where("username = ?", req.Username).First(&user)
 		if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
 			http.Error(w, "Error querying users", http.StatusInternalServerError)
 			return
@@ -39,7 +40,7 @@ func SignUp(a *app.App) http.HandlerFunc {
 
 		password, _ := bcrypt.GenerateFromPassword([]byte(req.Password), 14)
 		newUser := User{
-			RollNumber:   req.Username,
+			Username:     req.Username,
 			RoleId:       req.RoleId,
 			FirstName:    req.FirstName,
 			LastName:     req.LastName,
@@ -50,11 +51,17 @@ func SignUp(a *app.App) http.HandlerFunc {
 
 		err := a.DB.Create(&newUser).Error
 		if err != nil {
-			http.Error(w, "Error creating user", http.StatusInternalServerError)
+			log.Printf("Error creating new user: %v", err)
+			http.Error(w, "Error creating new user", http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("User Created Successfully!"))
+	}
+}
 
+func TestAPI() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("working fine!"))
 	}
 }

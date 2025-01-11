@@ -11,7 +11,7 @@ import (
 )
 
 type CreateTransactionReq struct {
-	RollNumber      string  `json:"roll_number"`
+	Username        string  `json:"username"`
 	TransactionType string  `json:"transaction_type"`
 	Items           int     `json:"items"`
 	Price           float64 `json:"price"`
@@ -34,7 +34,7 @@ func CreateTransaction(a *app.App) http.HandlerFunc {
 				billingMonth = time.Now().Format("200601") // YYYYMM format
 			)
 
-			err := tx.Where("roll_number = ?", req.RollNumber).First(&user).Error
+			err := tx.Where("username = ?", req.Username).First(&user).Error
 			if err != nil && err != gorm.ErrRecordNotFound {
 				return fmt.Errorf("user retrieval error: %w", err)
 			}
@@ -89,7 +89,6 @@ func CreateTransaction(a *app.App) http.HandlerFunc {
 		})
 
 		if err != nil {
-			// Handle the error and return appropriate response to the client
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

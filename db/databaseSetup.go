@@ -9,23 +9,27 @@ import (
 )
 
 func InitializeDB() (*gorm.DB, error) {
-	dsn := "host=127.0.0.1 user=postgres password=Naresh@007 dbname=manage port=5432 sslmode=disable"
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	dsn := " REMOVED"
+	//open connection to db
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		PrepareStmt: false,
+	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open database connection: %w", err)
 	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to retrieve database instance: %w", err)
 	}
 
 	if err := sqlDB.Ping(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	if err := db.AutoMigrate(&User{}); err != nil {
-		return nil, err
+	err = db.Exec("DEALLOCATE ALL").Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to deallocate prepared statements: %w", err)
 	}
 
 	fmt.Println("Successfully connected to the PostgreSQL database!")

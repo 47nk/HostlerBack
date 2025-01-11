@@ -22,6 +22,7 @@ func main() {
 	app := &app.App{DB: db}
 
 	r := mux.NewRouter()
+	r.HandleFunc("/test", login.TestAPI()).Methods("GET")
 	//users group
 	userGroup := r.PathPrefix("/users").Subrouter()
 	{
@@ -36,9 +37,11 @@ func main() {
 		announcementGroup.HandleFunc("/add", announcement.AddAnnouncement(app)).Methods("POST")
 		announcementGroup.HandleFunc("/get", announcement.GetAnnouncements(app)).Methods("GET")
 	}
+
 	//dashboard group
 	dashboardGroup := r.PathPrefix("/dashboard").Subrouter()
 	{
+		dashboardGroup.HandleFunc("/get-bills", dashboard.GetBills(app)).Methods("GET")
 		dashboardGroup.HandleFunc("/transaction", dashboard.CreateTransaction(app)).Methods("POST")
 
 	}

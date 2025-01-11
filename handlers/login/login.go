@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type LoginRequest struct {
@@ -26,15 +27,26 @@ func Login(a *app.App) http.HandlerFunc {
 			http.Error(w, "invalid payload", http.StatusBadRequest)
 			return
 		}
-
+		//fetch user
 		var user []User
-		err := a.DB.Where("roll_number = ?", req.Username).Find(&user).Error
+		err := a.DB.Where("username = ?", req.Username).Find(&user).Error
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
+		if len(user) == 0 {
+			http.Error(w, "OOPS! User Not Found", http.StatusInternalServerError)
+			return
+		}
+
 		//validate password
+		err = bcrypt.CompareHashAndPassword([]byte(user[0].Password), []byte(req.Password))
+		if err != nil {
+
+			http.Error(w, "OOPS! Wrong Password", http.StatusInternalServerError)
+			return
+		}
 
 		tokenString, err := GenerateJWT(req.Username)
 		if err != nil {
@@ -45,21 +57,30 @@ func Login(a *app.App) http.HandlerFunc {
 			Name:     "jwt",
 			Value:    tokenString,
 			Expires:  time.Now().Add(24 * time.Hour),
-			HttpOnly: true,
+			HttpOnly: false,
 			Secure:   false,
 			Path:     "/",
 			SameSite: http.SameSiteLaxMode,
 		}
 
 		http.SetCookie(w, &cookie)
-		w.Write([]byte("Login successful"))
+
+		// Set the content type to application/json
+		w.Header().Set("Content-Type", "application/json")
+
+		if err := json.NewEncoder(w).Encode(user[0]); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 func GenerateJWT(username string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &jwt.RegisteredClaims{
 		Subject:   username,
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 	})
+	//sign token
 	tokenString, err := token.SignedString([]byte("your_secret_key"))
 	if err != nil {
 		return "", err
