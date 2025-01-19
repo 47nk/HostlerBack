@@ -53,7 +53,9 @@ func main() {
 	//dashboard group
 	dashboardGroup := r.PathPrefix("/dashboard").Subrouter()
 	{
+		dashboardGroup.HandleFunc("/get-transactions", dashboard.GetTransactions(app)).Methods("GET")
 		dashboardGroup.HandleFunc("/get-bills", dashboard.GetBills(app)).Methods("GET")
+		dashboardGroup.HandleFunc("/get-dues", dashboard.GetDueDetails(app)).Methods("GET")
 		dashboardGroup.HandleFunc("/transaction", dashboard.CreateTransaction(app)).Methods("POST")
 
 	}
