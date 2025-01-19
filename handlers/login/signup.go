@@ -27,6 +27,12 @@ func SignUp(a *app.App) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+
+		if req.Username == "" || req.FirstName == "" || req.LastName == "" || req.MobileNumber == "" || req.RoleId == 0 || req.Password == "" {
+			http.Error(w, "Invalid Request Payload", http.StatusInternalServerError)
+			return
+		}
+
 		var user User
 		result := a.DB.Where("username = ?", req.Username).First(&user)
 		if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
@@ -38,7 +44,7 @@ func SignUp(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		password, _ := bcrypt.GenerateFromPassword([]byte(req.Password), 14)
+		password, _ := bcrypt.GenerateFromPassword([]byte(req.Password), 10)
 		newUser := User{
 			Username:     req.Username,
 			RoleId:       req.RoleId,

@@ -43,7 +43,6 @@ func Login(a *app.App) http.HandlerFunc {
 		//validate password
 		err = bcrypt.CompareHashAndPassword([]byte(user[0].Password), []byte(req.Password))
 		if err != nil {
-
 			http.Error(w, "OOPS! Wrong Password", http.StatusInternalServerError)
 			return
 		}

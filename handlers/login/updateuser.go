@@ -2,7 +2,6 @@ package login
 
 import (
 	"encoding/json"
-	"fmt"
 	"hostlerBackend/handlers/app"
 	"net/http"
 
@@ -25,7 +24,6 @@ func UpdateUser(a *app.App) http.HandlerFunc {
 		id := vars["id"]
 
 		var user User
-		fmt.Println("yesssss")
 		if err := a.DB.First(&user, id).Error; err != nil {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return

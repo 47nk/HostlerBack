@@ -12,12 +12,11 @@ func InitializeDB() (*gorm.DB, error) {
 	dsn := os.Getenv("DATABASE_URL")
 	//open connection to db
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		PrepareStmt: false,
+		PrepareStmt: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database connection: %w", err)
 	}
-
 	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve database instance: %w", err)
