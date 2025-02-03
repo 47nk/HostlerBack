@@ -2,6 +2,7 @@ package login
 
 import (
 	"encoding/json"
+	"fmt"
 	"hostlerBackend/handlers/app"
 	"log"
 	"net/http"
@@ -22,7 +23,10 @@ type SignupRequest struct {
 
 func SignUp(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req SignupRequest
+		var (
+			req  SignupRequest
+			user User
+		)
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -33,7 +37,6 @@ func SignUp(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		var user User
 		result := a.DB.Where("username = ?", req.Username).First(&user)
 		if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
 			http.Error(w, "Error querying users", http.StatusInternalServerError)
@@ -68,6 +71,7 @@ func SignUp(a *app.App) http.HandlerFunc {
 
 func TestAPI() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Print(r.Context().Value("user_id").(string))
 		w.Write([]byte("working fine!"))
 	}
 }

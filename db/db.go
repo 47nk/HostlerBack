@@ -26,11 +26,6 @@ func InitializeDB() (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	err = db.Exec("DEALLOCATE ALL").Error
-	if err != nil {
-		return nil, fmt.Errorf("failed to deallocate prepared statements: %w", err)
-	}
-
 	fmt.Println("Successfully connected to the PostgreSQL database!")
 	return db, nil
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"hostlerBackend/auth"
 	"hostlerBackend/db"
 	"hostlerBackend/handlers/announcement"
 	"hostlerBackend/handlers/app"
@@ -46,8 +47,10 @@ func main() {
 	//announcement group
 	announcementGroup := r.PathPrefix("/announcements").Subrouter()
 	{
-		announcementGroup.HandleFunc("/add", announcement.AddAnnouncement(app)).Methods("POST")
-		announcementGroup.HandleFunc("/get", announcement.GetAnnouncements(app)).Methods("GET")
+		announcementGroup.HandleFunc("/add-announcement", announcement.AddAnnouncement(app)).Methods("POST")
+		announcementGroup.HandleFunc("/get-announcements", announcement.GetAnnouncements(app)).Methods("GET")
+		announcementGroup.HandleFunc("/add-channel", announcement.CreateChannel(app)).Methods("POST")
+		announcementGroup.HandleFunc("/get-channels", auth.JWTMiddleware(announcement.GetChannels(app))).Methods("GET")
 	}
 
 	//dashboard group
@@ -56,12 +59,17 @@ func main() {
 		dashboardGroup.HandleFunc("/get-transactions", dashboard.GetTransactions(app)).Methods("GET")
 		dashboardGroup.HandleFunc("/get-bills", dashboard.GetBills(app)).Methods("GET")
 		dashboardGroup.HandleFunc("/get-dues", dashboard.GetDueDetails(app)).Methods("GET")
-		dashboardGroup.HandleFunc("/transaction", dashboard.CreateTransaction(app)).Methods("POST")
+		dashboardGroup.HandleFunc("/create-transaction", dashboard.CreateTransaction(app)).Methods("POST")
 
 	}
 
 	//cors
-	corsHandler := cors.Default().Handler(r)
+	corsHandler := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:5317"},
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowCredentials: true,
+	}).Handler(r)
 	log.Println("Server is running on port 8080")
 	http.ListenAndServe(":8080", corsHandler)
 }
