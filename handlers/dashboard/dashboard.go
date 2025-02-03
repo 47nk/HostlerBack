@@ -92,22 +92,23 @@ func GetTransactions(a *app.App) http.HandlerFunc {
 }
 
 type DueDetails struct {
-	TotalDue TotalDue
-	MealDue  float64 `json:"meal_due"`
-	MiscDue  float64 `json:"misc_due"`
+	TotalDueSplit []TotalDueSplit
+	MealDue       float64 `json:"meal_due"`
+	MiscDue       float64 `json:"misc_due"`
 }
-type TotalDue struct {
-	MiscTotalDue float64 `json:"misc_total_due"`
-	MealTotalDue float64 `json:"meal_total_due"`
+type TotalDueSplit struct {
+	DueType  string  `json:"due_type"`
+	DueValue float64 `json:"due_value"`
 }
 
 func GetDueDetails(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
-			userIdStr    = r.URL.Query().Get("user_id")
-			unpaidBills  []Bill
-			dueDetails   = DueDetails{}
-			currentMonth = time.Now().Format("200601")
+			userIdStr     = r.URL.Query().Get("user_id")
+			unpaidBills   []Bill
+			dueDetails    = DueDetails{}
+			currentMonth  = time.Now().Format("200601")
+			dueToValueMap = make(map[string]float64)
 		)
 
 		// Convert query parameters to appropriate types
@@ -130,14 +131,16 @@ func GetDueDetails(a *app.App) http.HandlerFunc {
 				if i == 0 && unpaidBills[i].BillingMonth == currentMonth {
 					dueDetails.MealDue += unpaidBills[i].Amount
 				}
-				dueDetails.TotalDue.MealTotalDue += unpaidBills[i].Amount
-
 			default:
 				if i == 0 && unpaidBills[i].BillingMonth == currentMonth {
 					dueDetails.MiscDue += unpaidBills[i].Amount
 				}
-				dueDetails.TotalDue.MiscTotalDue += unpaidBills[i].Amount
 			}
+			dueToValueMap[unpaidBills[i].BillType] += unpaidBills[i].Amount
+		}
+
+		for dueType, dueValue := range dueToValueMap {
+			dueDetails.TotalDueSplit = append(dueDetails.TotalDueSplit, TotalDueSplit{DueType: dueType, DueValue: dueValue})
 		}
 
 		// Set the content type to application/json

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"hostlerBackend/handlers/app"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -13,6 +14,11 @@ import (
 type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+type CustomClaims struct {
+	UserID int64 `json:"user_id"`
+	jwt.RegisteredClaims
 }
 
 func Login(a *app.App) http.HandlerFunc {
@@ -47,21 +53,21 @@ func Login(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		tokenString, err := GenerateJWT(req.Username)
+		tokenString, err := GenerateJWT(user[0].ID)
 		if err != nil {
 			http.Error(w, "Error generating token", http.StatusInternalServerError)
 			return
 		}
+
 		cookie := http.Cookie{
 			Name:     "jwt",
 			Value:    tokenString,
 			Expires:  time.Now().Add(24 * time.Hour),
 			HttpOnly: false,
-			Secure:   false,
+			Secure:   true,
 			Path:     "/",
-			SameSite: http.SameSiteLaxMode,
+			SameSite: http.SameSiteNoneMode,
 		}
-
 		http.SetCookie(w, &cookie)
 
 		// Set the content type to application/json
@@ -73,17 +79,21 @@ func Login(a *app.App) http.HandlerFunc {
 		}
 	}
 }
-func GenerateJWT(username string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &jwt.RegisteredClaims{
-		Subject:   username,
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-	})
+
+func GenerateJWT(userId int64) (string, error) {
+	claims := CustomClaims{
+		UserID: userId,
+		RegisteredClaims: jwt.RegisteredClaims{
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	//sign token
-	tokenString, err := token.SignedString([]byte("your_secret_key"))
+	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_KEY")))
 	if err != nil {
 		return "", err
 	}
 	return tokenString, nil
-
 }
