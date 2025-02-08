@@ -9,8 +9,6 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
-// Your secret key used to sign the token (ensure this is stored securely)
-
 // Function to parse JWT from the cookie and validate it
 func parseJWTFromCookie(w http.ResponseWriter, r *http.Request) (*jwt.Token, error) {
 	cookie, err := r.Cookie("jwt")
