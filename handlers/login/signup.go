@@ -2,7 +2,6 @@ package login
 
 import (
 	"encoding/json"
-	"fmt"
 	"hostlerBackend/handlers/app"
 	"log"
 	"net/http"
@@ -24,7 +23,6 @@ type SignupRequest struct {
 
 func TestAPI() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Print(r.Context().Value("user_id").(string))
 		w.Write([]byte("working fine!"))
 	}
 }
@@ -45,7 +43,9 @@ func SignUp(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		result := a.DB.Where("username = ?", req.Username).First(&user)
+		result := a.DB.
+			Where("username = ?", req.Username).
+			First(&user)
 		if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
 			http.Error(w, "Error querying users", http.StatusInternalServerError)
 			return
