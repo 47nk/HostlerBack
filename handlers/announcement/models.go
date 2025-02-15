@@ -3,11 +3,13 @@ package announcement
 import "time"
 
 type Announcement struct {
-	ID          uint      `gorm:"primaryKey" json:"id,omitempty"`
-	Title       string    `gorm:"size:255;not null" json:"title,omitempty"`
-	Type        string    `gorm:"size:100;not null" json:"type,omitempty"`
-	Description string    `gorm:"type:text" json:"description,omitempty"`
+	ID          uint      `gorm:"primaryKey"`
+	Title       string    `gorm:"size:255;not null" json:"title"`
+	Type        string    `gorm:"size:100;not null" json:"type"`
+	Description string    `gorm:"type:text" json:"description"`
+	ChannelId   int       `gorm:"not null" json:"channel_id"`
 	CreatedBy   uint      `json:"created_by,omitempty"`
+	UpdatedBy   uint      `json:"updated_by,omitempty"`
 	CreatedAt   time.Time `json:"created_at,omitempty"`
 	UpdatedAt   time.Time `json:"updated_at,omitempty"`
 }
@@ -34,16 +36,16 @@ func (Entity) TableName() string {
 }
 
 type Channel struct {
-	ID          uint      `gorm:"primaryKey"`                 // Primary key
-	EntityID    uint      `gorm:"not null"`                   // The entity (hostel, office, etc.) this channel belongs to
-	Name        string    `gorm:"type:varchar(255);not null"` // Name of the channel
-	Type        string    `gorm:"type:varchar(50);not null"`  // Type of channel (e.g., 'general', 'announcements', 'events')
-	Description string    `gorm:"type:text"`                  // Optional description of the channel
-	CreatedBy   uint      `gorm:"index;default:NULL"`         // User who created the channel (nullable, references users table)
-	UpdatedBy   uint      `gorm:"index;default:NULL"`         // User who last updated the channel (references users table)
-	CreatedAt   time.Time `gorm:"autoCreateTime"`             // Timestamp when the channel was created
-	UpdatedAt   time.Time `gorm:"autoUpdateTime"`             // Last updated timestamp
-
+	ID          uint      `gorm:"primaryKey"`
+	EntityID    uint      `gorm:"not null"`
+	Name        string    `gorm:"type:varchar(255);not null"`
+	Type        string    `gorm:"type:varchar(50);not null"`
+	Description string    `gorm:"type:text"`
+	Active      bool      `gorm:"default:true" json:"active"`
+	CreatedBy   uint      `gorm:"index;default:NULL"`
+	UpdatedBy   uint      `gorm:"index;default:NULL"`
+	CreatedAt   time.Time `gorm:"autoCreateTime"`
+	UpdatedAt   time.Time `gorm:"autoUpdateTime"`
 }
 
 func (Channel) TableName() string {

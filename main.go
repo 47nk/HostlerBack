@@ -39,7 +39,7 @@ func main() {
 	//users group
 	userGroup := r.PathPrefix("/users").Subrouter()
 	{
-		userGroup.HandleFunc("/{id}", login.UpdateUser(app)).Methods("PUT")
+		userGroup.HandleFunc("/{id}", auth.JWTMiddleware(login.UpdateUser(app))).Methods("PUT")
 		userGroup.HandleFunc("/login", login.Login(app)).Methods("POST")
 		userGroup.HandleFunc("/signup", login.SignUp(app)).Methods("POST")
 	}
@@ -47,19 +47,19 @@ func main() {
 	//announcement group
 	announcementGroup := r.PathPrefix("/announcements").Subrouter()
 	{
-		announcementGroup.HandleFunc("/add-announcement", announcement.AddAnnouncement(app)).Methods("POST")
-		announcementGroup.HandleFunc("/get-announcements", announcement.GetAnnouncements(app)).Methods("GET")
-		announcementGroup.HandleFunc("/add-channel", announcement.CreateChannel(app)).Methods("POST")
+		announcementGroup.HandleFunc("/add-announcement", auth.JWTMiddleware(announcement.AddAnnouncement(app))).Methods("POST")
+		announcementGroup.HandleFunc("/get-announcements", auth.JWTMiddleware(announcement.GetAnnouncements(app))).Methods("GET")
+		announcementGroup.HandleFunc("/add-channel", auth.JWTMiddleware(announcement.CreateChannel(app))).Methods("POST")
 		announcementGroup.HandleFunc("/get-channels", auth.JWTMiddleware(announcement.GetChannels(app))).Methods("GET")
 	}
 
 	//dashboard group
 	dashboardGroup := r.PathPrefix("/dashboard").Subrouter()
 	{
-		dashboardGroup.HandleFunc("/get-transactions", dashboard.GetTransactions(app)).Methods("GET")
-		dashboardGroup.HandleFunc("/get-bills", dashboard.GetBills(app)).Methods("GET")
-		dashboardGroup.HandleFunc("/get-dues", dashboard.GetDueDetails(app)).Methods("GET")
-		dashboardGroup.HandleFunc("/create-transaction", dashboard.CreateTransaction(app)).Methods("POST")
+		dashboardGroup.HandleFunc("/get-transactions", auth.JWTMiddleware(dashboard.GetTransactions(app))).Methods("GET")
+		dashboardGroup.HandleFunc("/get-bills", auth.JWTMiddleware(dashboard.GetBills(app))).Methods("GET")
+		dashboardGroup.HandleFunc("/get-dues", auth.JWTMiddleware(dashboard.GetDueDetails(app))).Methods("GET")
+		dashboardGroup.HandleFunc("/create-transaction", auth.JWTMiddleware(dashboard.CreateTransaction(app))).Methods("POST")
 
 	}
 

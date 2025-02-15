@@ -2,6 +2,7 @@ package announcement
 
 import (
 	"encoding/json"
+	"errors"
 	"hostlerBackend/handlers/app"
 	"log"
 	"net/http"
@@ -10,13 +11,84 @@ import (
 	"gorm.io/gorm"
 )
 
+type CreateChannelReq struct {
+	EntityId    uint   `json:"entity_id"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Description string `json:"description"`
+}
+
 func CreateChannel(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req Channel
+		var (
+			req       CreateChannelReq
+			entity    Entity
+			userIdStr = r.Context().Value("user_id").(string)
+		)
+
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+
+		userId, err := strconv.ParseInt(userIdStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid user ID", http.StatusUnauthorized)
+			return
+		}
+
+		//validations
+		if req.EntityId <= 0 {
+			http.Error(w, "Invalid Entity", http.StatusBadRequest)
+			return
+		}
+		if req.Name == "" {
+			http.Error(w, "Please Provide a Channel Name", http.StatusBadRequest)
+			return
+		}
+		if req.Type == "" {
+			http.Error(w, "Please Choose type of Channel", http.StatusBadRequest)
+			return
+		}
+
+		//check if entity exists
+		err = a.DB.Preload("Channels", func(db *gorm.DB) *gorm.DB {
+			return db.Where("entity_id = ?", req.EntityId)
+		}).Where("id = ? AND active = true", req.EntityId).First(&entity).Error
+
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				http.Error(w, "Entity not found", http.StatusNotFound)
+			} else {
+				http.Error(w, "Error retrieving entity details", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		//avoiding channels with same name in entity
+		for _, channel := range entity.Channels {
+			if channel.Name == req.Name && channel.Active {
+				http.Error(w, "Channel with this Name already Exists", http.StatusConflict)
+				return
+			}
+		}
+
+		//create channel
+		err = a.DB.Create(&Channel{
+			CreatedBy:   uint(userId),
+			UpdatedBy:   uint(userId),
+			EntityID:    req.EntityId,
+			Name:        req.Name,
+			Type:        req.Type,
+			Description: req.Description,
+		}).Error
+		if err != nil {
+			http.Error(w, "Internal Error Creating Channel", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]string{"message": "Channel created successfully"})
 	}
 }
 
