@@ -3,7 +3,7 @@ package announcement
 import (
 	"encoding/json"
 	"fmt"
-	"hostlerBackend/handlers/app"
+	"hostlerBackend/app"
 	"io"
 	"log"
 	"net/http"

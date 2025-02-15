@@ -2,7 +2,7 @@ package dashboard
 
 import (
 	"encoding/json"
-	"hostlerBackend/handlers/app"
+	"hostlerBackend/app"
 	"log"
 	"net/http"
 	"strconv"
@@ -105,16 +105,6 @@ func GetTransactions(a *app.App) http.HandlerFunc {
 		}
 
 	}
-}
-
-type DueDetails struct {
-	TotalDueSplit []TotalDueSplit
-	MealDue       float64 `json:"meal_due"`
-	MiscDue       float64 `json:"misc_due"`
-}
-type TotalDueSplit struct {
-	DueType  string  `json:"due_type"`
-	DueValue float64 `json:"due_value"`
 }
 
 func GetDueDetails(a *app.App) http.HandlerFunc {

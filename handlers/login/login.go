@@ -2,7 +2,7 @@ package login
 
 import (
 	"encoding/json"
-	"hostlerBackend/handlers/app"
+	"hostlerBackend/app"
 	"net/http"
 	"os"
 	"time"
@@ -10,17 +10,6 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 )
-
-type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-type CustomClaims struct {
-	Role   string `json:"role"`
-	UserID int64  `json:"user_id"`
-	jwt.RegisteredClaims
-}
 
 func Login(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

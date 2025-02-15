@@ -2,24 +2,16 @@ package login
 
 import (
 	"encoding/json"
-	"hostlerBackend/handlers/app"
+	"hostlerBackend/app"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
-
-type SignupRequest struct {
-	Username     string `json:"username"`
-	FirstName    string `json:"first_name"`
-	LastName     string `json:"last_name"`
-	RoleId       int64  `json:"role_id"`
-	MobileNumber string `json:"mobile_num"`
-	Password     string `json:"password"`
-}
 
 func TestAPI() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -30,43 +22,81 @@ func TestAPI() http.HandlerFunc {
 func SignUp(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
-			req  SignupRequest
-			user User
+			req             SignupRequest
+			user            User
+			userRoleDetails Role
 		)
+		//verify user role
+		userRole, ok := r.Context().Value("role").(string)
+		if !ok {
+			http.Error(w, `{"error": "User Role missing or invalid"}`, http.StatusUnauthorized)
+			return
+		}
+		if userRole != "admin" {
+			http.Error(w, `{"error": "Only admin can onboard new user"}`, http.StatusUnauthorized)
+			return
+		}
+
+		// Get user ID from context
+		userIdStr, ok := r.Context().Value("user_id").(string)
+		if !ok || userIdStr == "" {
+			http.Error(w, `{"error": "User ID missing or invalid"}`, http.StatusUnauthorized)
+			return
+		}
+		userId, err := strconv.ParseInt(userIdStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid user ID", http.StatusBadRequest)
+			return
+		}
+
+		//decode request
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-
-		if req.Username == "" || req.FirstName == "" || req.LastName == "" || req.MobileNumber == "" || req.RoleId == 0 || req.Password == "" {
+		if req.Username == "" || req.FirstName == "" || req.LastName == "" || req.MobileNumber == "" || req.Role == "" || req.Password == "" {
 			http.Error(w, "Invalid Request Payload", http.StatusInternalServerError)
 			return
 		}
 
+		//check if user already exits
 		result := a.DB.
 			Where("username = ?", req.Username).
 			First(&user)
 		if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
-			http.Error(w, "Error querying users", http.StatusInternalServerError)
+			http.Error(w, "Error querying users!", http.StatusInternalServerError)
 			return
 		}
 		if result.RowsAffected != 0 {
-			http.Error(w, "User with username already exits", http.StatusInternalServerError)
+			http.Error(w, "User with username already exists!", http.StatusInternalServerError)
+			return
+		}
+
+		//check if role exits
+		err = a.DB.Where("role = ? and active = true", req.Role).Find(&userRoleDetails).Error
+		if err != nil {
+			http.Error(w, "Internal Error finding role details!", http.StatusInternalServerError)
+			return
+		}
+		if userRoleDetails.ID == 0 {
+			http.Error(w, "No such Role found!", http.StatusInternalServerError)
 			return
 		}
 
 		password, _ := bcrypt.GenerateFromPassword([]byte(req.Password), 10)
 		newUser := User{
 			Username:     req.Username,
-			RoleId:       req.RoleId,
+			RoleId:       int64(userRoleDetails.ID),
 			FirstName:    req.FirstName,
 			LastName:     req.LastName,
 			MobileNumber: req.MobileNumber,
 			Password:     string(password),
 			CreatedAt:    time.Now(),
+			CreatedBy:    userId,
+			UpdatedBy:    userId,
 		}
-
-		err := a.DB.Create(&newUser).Error
+		//create new user
+		err = a.DB.Create(&newUser).Error
 		if err != nil {
 			log.Printf("Error creating new user: %v", err)
 			http.Error(w, "Error creating new user", http.StatusInternalServerError)
@@ -75,10 +105,6 @@ func SignUp(a *app.App) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("User Created Successfully!"))
 	}
-}
-
-type UpdateUserRequest struct {
-	FirstName string `json:"first_name"`
 }
 
 func UpdateUser(a *app.App) http.HandlerFunc {

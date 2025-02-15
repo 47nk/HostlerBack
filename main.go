@@ -1,10 +1,10 @@
 package main
 
 import (
+	"hostlerBackend/app"
 	"hostlerBackend/auth"
 	"hostlerBackend/db"
 	"hostlerBackend/handlers/announcement"
-	"hostlerBackend/handlers/app"
 	"hostlerBackend/handlers/dashboard"
 	"hostlerBackend/handlers/login"
 	"log"
@@ -39,9 +39,9 @@ func main() {
 	//users group
 	userGroup := r.PathPrefix("/users").Subrouter()
 	{
-		userGroup.HandleFunc("/{id}", auth.JWTMiddleware(login.UpdateUser(app))).Methods("PUT")
 		userGroup.HandleFunc("/login", login.Login(app)).Methods("POST")
-		userGroup.HandleFunc("/signup", login.SignUp(app)).Methods("POST")
+		userGroup.HandleFunc("/{id}", auth.JWTMiddleware(login.UpdateUser(app))).Methods("PUT")
+		userGroup.HandleFunc("/signup", auth.JWTMiddleware(login.SignUp(app))).Methods("POST")
 	}
 
 	//announcement group

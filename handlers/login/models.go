@@ -13,8 +13,10 @@ type User struct {
 	MobileNumber string    `gorm:"type:text;not null"`
 	CreatedAt    time.Time `gorm:"type:timestamptz;default:CURRENT_TIMESTAMP"`
 	UpdatedAt    time.Time `gorm:"type:timestamptz"`
+	CreatedBy    int64     `gorm:"type:numeric;not null"`
+	UpdatedBy    int64     `gorm:"type:numeric;not null"`
 	Password     string    `gorm:"type:text;not null"`
-	Active       bool      `gorm:"type:boolean"`
+	Active       bool      `gorm:"type:boolean;default:true;not null"`
 	UserRole     Role      `gorm:"foreignKey:RoleId;references:ID"`
 }
 

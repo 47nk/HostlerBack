@@ -3,20 +3,13 @@ package announcement
 import (
 	"encoding/json"
 	"errors"
-	"hostlerBackend/handlers/app"
+	"hostlerBackend/app"
 	"log"
 	"net/http"
 	"strconv"
 
 	"gorm.io/gorm"
 )
-
-type CreateChannelReq struct {
-	EntityId    uint   `json:"entity_id"`
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	Description string `json:"description"`
-}
 
 func CreateChannel(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
