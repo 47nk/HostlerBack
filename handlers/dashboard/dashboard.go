@@ -2,7 +2,7 @@ package dashboard
 
 import (
 	"encoding/json"
-	"hostlerBackend/handlers/app"
+	"hostlerBackend/app"
 	"log"
 	"net/http"
 	"strconv"
@@ -13,11 +13,17 @@ func GetBills(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Retrieve query parameters
 		var (
-			userIdStr = r.URL.Query().Get("user_id")
 			limitStr  = r.URL.Query().Get("limit")
 			offsetStr = r.URL.Query().Get("offset")
 			bills     []Bill
 		)
+
+		// Get user ID from context
+		userIdStr, ok := r.Context().Value("user_id").(string)
+		if !ok || userIdStr == "" {
+			http.Error(w, `{"error": "User ID missing or invalid"}`, http.StatusUnauthorized)
+			return
+		}
 
 		// Convert query parameters to appropriate types
 		userId, err := strconv.ParseInt(userIdStr, 10, 64)
@@ -37,7 +43,11 @@ func GetBills(a *app.App) http.HandlerFunc {
 		}
 
 		// Fetch bills from the database based on user ID, limit, and offset
-		err = a.DB.Where("user_id = ?", userId).Limit(limit).Offset(offset).Order("billing_month desc").Find(&bills).Error
+		err = a.DB.
+			Where("user_id = ?", userId).
+			Limit(limit).Offset(offset).
+			Order("billing_month desc").
+			Find(&bills).Error
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -57,10 +67,16 @@ func GetBills(a *app.App) http.HandlerFunc {
 func GetTransactions(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
-			userIdStr       = r.URL.Query().Get("user_id")
 			billingMonthStr = r.URL.Query().Get("billing_month")
 			transactions    = []Transaction{}
 		)
+
+		// Get user ID from context
+		userIdStr, ok := r.Context().Value("user_id").(string)
+		if !ok || userIdStr == "" {
+			http.Error(w, `{"error": "User ID missing or invalid"}`, http.StatusUnauthorized)
+			return
+		}
 
 		// Convert query parameters to appropriate types
 		userId, err := strconv.ParseInt(userIdStr, 10, 64)
@@ -91,25 +107,21 @@ func GetTransactions(a *app.App) http.HandlerFunc {
 	}
 }
 
-type DueDetails struct {
-	TotalDueSplit []TotalDueSplit
-	MealDue       float64 `json:"meal_due"`
-	MiscDue       float64 `json:"misc_due"`
-}
-type TotalDueSplit struct {
-	DueType  string  `json:"due_type"`
-	DueValue float64 `json:"due_value"`
-}
-
 func GetDueDetails(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
-			userIdStr     = r.URL.Query().Get("user_id")
 			unpaidBills   []Bill
 			dueDetails    = DueDetails{}
 			currentMonth  = time.Now().Format("200601")
 			dueToValueMap = make(map[string]float64)
 		)
+
+		// Get user ID from context
+		userIdStr, ok := r.Context().Value("user_id").(string)
+		if !ok || userIdStr == "" {
+			http.Error(w, `{"error": "User ID missing or invalid"}`, http.StatusUnauthorized)
+			return
+		}
 
 		// Convert query parameters to appropriate types
 		userId, err := strconv.ParseInt(userIdStr, 10, 64)
@@ -118,7 +130,10 @@ func GetDueDetails(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		err = a.DB.Where("user_id = ? and payment_status != ?", userId, "complete").Order("billing_month desc").Find(&unpaidBills).Error
+		err = a.DB.
+			Where("user_id = ? and payment_status != ?", userId, "complete").
+			Order("billing_month desc").
+			Find(&unpaidBills).Error
 		if err != nil {
 			log.Printf("Error finding unpaid bills for user %d: %v", userId, err)
 			http.Error(w, "Error finding Bills", http.StatusInternalServerError)

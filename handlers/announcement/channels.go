@@ -3,7 +3,7 @@ package announcement
 import (
 	"encoding/json"
 	"errors"
-	"hostlerBackend/handlers/app"
+	"hostlerBackend/app"
 	"log"
 	"net/http"
 	"strconv"
@@ -11,23 +11,22 @@ import (
 	"gorm.io/gorm"
 )
 
-type CreateChannelReq struct {
-	EntityId    uint   `json:"entity_id"`
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	Description string `json:"description"`
-}
-
 func CreateChannel(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
-			req       CreateChannelReq
-			entity    Entity
-			userIdStr = r.Context().Value("user_id").(string)
+			req    CreateChannelReq
+			entity Entity
 		)
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// Get user ID from context
+		userIdStr, ok := r.Context().Value("user_id").(string)
+		if !ok || userIdStr == "" {
+			http.Error(w, `{"error": "User ID missing or invalid"}`, http.StatusUnauthorized)
 			return
 		}
 
@@ -95,9 +94,15 @@ func CreateChannel(a *app.App) http.HandlerFunc {
 func GetChannels(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
-			entities  []Entity
-			userIdStr = r.Context().Value("user_id").(string)
+			entities []Entity
 		)
+
+		// Get user ID from context
+		userIdStr, ok := r.Context().Value("user_id").(string)
+		if !ok || userIdStr == "" {
+			http.Error(w, `{"error": "User ID missing or invalid"}`, http.StatusUnauthorized)
+			return
+		}
 
 		userId, err := strconv.ParseInt(userIdStr, 10, 64)
 		if err != nil {

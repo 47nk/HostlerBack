@@ -3,21 +3,12 @@ package dashboard
 import (
 	"encoding/json"
 	"fmt"
-	"hostlerBackend/handlers/app"
+	"hostlerBackend/app"
 	"net/http"
 	"time"
 
 	"gorm.io/gorm"
 )
-
-type CreateTransactionReq struct {
-	Username        string  `json:"username"`
-	TransactionType string  `json:"transaction_type"`
-	Items           int     `json:"items"`
-	Price           float64 `json:"price"`
-	ExtraItems      int     `json:"extra_items"`
-	ExtraPrice      float64 `json:"extra_price"`
-}
 
 func CreateTransaction(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +83,6 @@ func CreateTransaction(a *app.App) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
 		// Success response (if everything went well)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Transaction completed successfully"))
