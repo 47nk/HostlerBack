@@ -32,14 +32,15 @@ func (Bill) TableName() string {
 }
 
 type Transaction struct {
-	ID              int64   `gorm:"primaryKey;autoIncrement"` // Matches 'bigint' type in PostgreSQL
-	BillId          int64   `gorm:"numeric;not null"`
-	Price           float64 `gorm:"numeric;not null"`
-	Items           int64   `gorm:"numeric;not null"`
-	ExtraPrice      float64 `gorm:"numeric;not null"`
-	ExtraItems      int64   `gorm:"numeric;not null"`
-	Description     string  `gorm:"type:text;not null"`
-	TransactionType string  `gorm:"size:50;not null"`
+	ID              int64     `gorm:"primaryKey;autoIncrement"`
+	CreatedAt       time.Time `gorm:"type:timestamptz;default:CURRENT_TIMESTAMP"`
+	BillId          int64     `gorm:"numeric;not null"`
+	Price           float64   `gorm:"numeric;not null"`
+	Items           int64     `gorm:"numeric;not null"`
+	ExtraPrice      float64   `gorm:"numeric;not null"`
+	ExtraItems      int64     `gorm:"numeric;not null"`
+	Description     string    `gorm:"type:text;not null"`
+	TransactionType string    `gorm:"size:50;not null"`
 }
 
 func (Transaction) TableName() string {

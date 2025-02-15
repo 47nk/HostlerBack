@@ -1,6 +1,7 @@
 package main
 
 import (
+	"hostlerBackend/auth"
 	"hostlerBackend/db"
 	"hostlerBackend/handlers/announcement"
 	"hostlerBackend/handlers/app"
@@ -38,7 +39,7 @@ func main() {
 	//users group
 	userGroup := r.PathPrefix("/users").Subrouter()
 	{
-		userGroup.HandleFunc("/{id}", login.UpdateUser(app)).Methods("PUT")
+		userGroup.HandleFunc("/{id}", auth.JWTMiddleware(login.UpdateUser(app))).Methods("PUT")
 		userGroup.HandleFunc("/login", login.Login(app)).Methods("POST")
 		userGroup.HandleFunc("/signup", login.SignUp(app)).Methods("POST")
 	}
@@ -46,20 +47,29 @@ func main() {
 	//announcement group
 	announcementGroup := r.PathPrefix("/announcements").Subrouter()
 	{
-		announcementGroup.HandleFunc("/add", announcement.AddAnnouncement(app)).Methods("POST")
-		announcementGroup.HandleFunc("/get", announcement.GetAnnouncements(app)).Methods("GET")
+		announcementGroup.HandleFunc("/add-announcement", auth.JWTMiddleware(announcement.AddAnnouncement(app))).Methods("POST")
+		announcementGroup.HandleFunc("/get-announcements", auth.JWTMiddleware(announcement.GetAnnouncements(app))).Methods("GET")
+		announcementGroup.HandleFunc("/add-channel", auth.JWTMiddleware(announcement.CreateChannel(app))).Methods("POST")
+		announcementGroup.HandleFunc("/get-channels", auth.JWTMiddleware(announcement.GetChannels(app))).Methods("GET")
 	}
 
 	//dashboard group
 	dashboardGroup := r.PathPrefix("/dashboard").Subrouter()
 	{
-		dashboardGroup.HandleFunc("/get-bills", dashboard.GetBills(app)).Methods("GET")
-		dashboardGroup.HandleFunc("/transaction", dashboard.CreateTransaction(app)).Methods("POST")
+		dashboardGroup.HandleFunc("/get-transactions", auth.JWTMiddleware(dashboard.GetTransactions(app))).Methods("GET")
+		dashboardGroup.HandleFunc("/get-bills", auth.JWTMiddleware(dashboard.GetBills(app))).Methods("GET")
+		dashboardGroup.HandleFunc("/get-dues", auth.JWTMiddleware(dashboard.GetDueDetails(app))).Methods("GET")
+		dashboardGroup.HandleFunc("/create-transaction", auth.JWTMiddleware(dashboard.CreateTransaction(app))).Methods("POST")
 
 	}
 
 	//cors
-	corsHandler := cors.Default().Handler(r)
+	corsHandler := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:5317"},
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowCredentials: true,
+	}).Handler(r)
 	log.Println("Server is running on port 8080")
 	http.ListenAndServe(":8080", corsHandler)
 }
