@@ -6,29 +6,39 @@ import (
 	"hostlerBackend/app"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	storage "github.com/supabase-community/storage-go"
+	"gorm.io/gorm"
+)
+
+var (
+	channelClients = make(map[int]map[*SSEClient]bool) // Channel-specific clients
+	clientsMu      sync.Mutex
 )
 
 func AddAnnouncement(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req Announcement
+		// Parse multipart form data (max 10MB per file)
+		err := r.ParseMultipartForm(10 << 20)
+		if err != nil {
+			http.Error(w, `{"error": "Failed to parse form data"}`, http.StatusBadRequest)
+			return
+		}
 
 		// Get user ID from context
 		userIdStr, ok := r.Context().Value("user_id").(string)
 		if !ok || userIdStr == "" {
 			http.Error(w, `{"error": "User ID missing or invalid"}`, http.StatusUnauthorized)
-			return
-		}
-
-		// Decode request body
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, `{"error": "Invalid request payload"}`, http.StatusBadRequest)
 			return
 		}
 
@@ -39,34 +49,80 @@ func AddAnnouncement(a *app.App) http.HandlerFunc {
 			return
 		}
 
+		title := r.FormValue("title")
+		type_ := r.FormValue("type")
+		description := r.FormValue("description")
+		channelIdStr := r.FormValue("channel_id")
+
 		// Validate input fields
-		if req.Title == "" {
+		if title == "" {
 			http.Error(w, `{"error": "Title is required"}`, http.StatusBadRequest)
 			return
 		}
-		if req.Type == "" {
+		if type_ == "" {
 			http.Error(w, `{"error": "Type is required"}`, http.StatusBadRequest)
 			return
 		}
-		if req.Description == "" {
+		if description == "" {
 			http.Error(w, `{"error": "Description is required"}`, http.StatusBadRequest)
 			return
 		}
-		if req.ChannelId <= 0 {
+		if channelIdStr == "" {
 			http.Error(w, `{"error": "Channel ID is required"}`, http.StatusBadRequest)
 			return
 		}
 
-		// Set creator and updater IDs
-		req.CreatedBy = uint(userId)
-		req.UpdatedBy = uint(userId)
-
-		// Create the announcement
-		if err := a.DB.Create(&req).Error; err != nil {
-			log.Printf("Error creating announcement: %v", err)
-			http.Error(w, `{"error": "Failed to create announcement"}`, http.StatusInternalServerError)
+		channelId, err := strconv.Atoi(channelIdStr)
+		if err != nil || channelId <= 0 {
+			http.Error(w, `{"error": "Invalid channel ID"}`, http.StatusBadRequest)
 			return
 		}
+
+		var attachments []AnnouncementAttachment
+		files := r.MultipartForm.File["attachments"]
+		for _, fileHeader := range files {
+			attachment, err := uploadAnnouncementAttachment(a, fileHeader)
+			if err != nil {
+				http.Error(w, `{"error": "Failed to upload attachments"}`, http.StatusBadRequest)
+				return
+			}
+			attachments = append(attachments, attachment)
+		}
+
+		// Create the announcement record
+		announcement := Announcement{
+			Title:       title,
+			Type:        type_,
+			Description: description,
+			ChannelId:   channelId,
+			CreatedBy:   uint(userId),
+			UpdatedBy:   uint(userId),
+			Attachments: attachments,
+		}
+
+		err = a.DB.Transaction(func(tx *gorm.DB) error {
+			// Create the announcement
+			if err := tx.Create(&announcement).Error; err != nil {
+				log.Printf("Error creating announcement: %v", err)
+				return err
+			}
+
+			// Fetch the announcement with the creator details
+			if err := tx.Preload("Creator").First(&announcement, announcement.ID).Error; err != nil {
+				log.Printf("Error Finding Creator: %v", err)
+				return err
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			http.Error(w, `{"error": "Failed to process announcement"}`, http.StatusInternalServerError)
+			return
+		}
+
+		// Broadcast to users
+		broadcastAnnouncement(announcement)
 
 		// Success response
 		w.Header().Set("Content-Type", "application/json")
@@ -75,83 +131,167 @@ func AddAnnouncement(a *app.App) http.HandlerFunc {
 	}
 }
 
-func UploadAnnouncementAttachment(a *app.App) http.HandlerFunc {
+func uploadAnnouncementAttachment(a *app.App, fileHeader *multipart.FileHeader) (AnnouncementAttachment, error) {
+	file, err := fileHeader.Open()
+	if err != nil {
+		log.Printf("Error opening file: %v", err)
+		return AnnouncementAttachment{}, err
+	}
+	defer file.Close()
+
+	// Read first 512 bytes for MIME detection
+	buffer := make([]byte, 512)
+	_, err = file.Read(buffer)
+	if err != nil && err != io.EOF {
+		log.Printf("Failed to read file: %v", err)
+		return AnnouncementAttachment{}, err
+	}
+	detectedType := http.DetectContentType(buffer)
+
+	// Reset file reader after detection
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		log.Printf("Failed to reset file: %v", err)
+		return AnnouncementAttachment{}, err
+	}
+
+	allowedTypes := map[string]bool{
+		// Images
+		"image/jpeg": true,
+		"image/png":  true,
+
+		// Videos
+		"video/mp4": true,
+
+		// Text & CSV
+		"text/csv":   true,
+		"text/plain": true,
+
+		// Archives
+		"application/zip": true, // XLSX, DOCX, PPTX are ZIP-based formats
+
+		// PDF
+		"application/pdf": true,
+
+		// Microsoft Word
+		"application/msword": true, // DOC
+		"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true, // DOCX
+
+		// Microsoft Excel
+		"application/vnd.ms-excel": true, // XLS
+		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true, // XLSX
+
+		// Microsoft PowerPoint
+		"application/vnd.ms-powerpoint":                                             true, // PPT
+		"application/vnd.openxmlformats-officedocument.presentationml.presentation": true, // PPTX
+	}
+
+	if !allowedTypes[detectedType] {
+		log.Printf("Invalid file type: %v", err)
+		return AnnouncementAttachment{}, err
+	}
+
+	// Sanitize filename
+	sanitizedFilename := filepath.Base(fileHeader.Filename)
+	sanitizedFilename = strings.ReplaceAll(sanitizedFilename, " ", "_") // Replace spaces with underscores
+	sanitizedFilename = strings.ReplaceAll(sanitizedFilename, " ", "_") // Replace non-breaking spaces with underscores
+	sanitizedFilename = strings.ToLower(sanitizedFilename)
+	fileName := fmt.Sprintf("%s_%s", uuid.New().String(), sanitizedFilename)
+
+	// Upload to Supabase
+	bucketName := "announcements"
+	supabaseStorageURL := fmt.Sprintf("%s/storage/v1", os.Getenv("SUPABASE_URL"))
+	client := storage.NewClient(supabaseStorageURL, os.Getenv("SUPABASE_KEY"), nil)
+	_, err = client.UploadFile(bucketName, fileName, file, storage.FileOptions{
+		ContentType: &detectedType,
+	})
+	if err != nil {
+		log.Printf("Upload failed: %v", err)
+		return AnnouncementAttachment{}, err
+	}
+
+	fileURL := fmt.Sprintf("%s/storage/v1/object/public/%s/%s", os.Getenv("SUPABASE_URL"), bucketName, fileName)
+	response := AnnouncementAttachment{
+		FileType: detectedType,
+		FilePath: fileURL,
+		FileSize: fileHeader.Size,
+	}
+
+	return response, nil
+
+}
+
+func AnnouncementsSSE(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		// Set headers for SSE
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+
+		// Get channel_id from query parameters
+		vars := mux.Vars(r)
+		channelIDStr := vars["channel_id"]
+		channelID, err := strconv.Atoi(channelIDStr)
+		if err != nil || channelID <= 0 {
+			http.Error(w, `{"error": "Invalid channel ID"}`, http.StatusBadRequest)
 			return
 		}
 
-		// Enforce max request size
-		maxFileSize := int64(10 << 20) // 10MB
-		r.Body = http.MaxBytesReader(w, r.Body, maxFileSize)
-		if err := r.ParseMultipartForm(maxFileSize); err != nil {
-			http.Error(w, "File too large", http.StatusRequestEntityTooLarge)
-			return
-		}
+		// Create a new SSE client
+		client := &SSEClient{Channel: make(chan string, 10)}
 
-		file, fileHeader, err := r.FormFile("file")
-		if err != nil {
-			http.Error(w, "Failed to get file", http.StatusBadRequest)
-			return
+		// Register the client to the specific channel
+		clientsMu.Lock()
+		if _, exists := channelClients[channelID]; !exists {
+			channelClients[channelID] = make(map[*SSEClient]bool)
 		}
-		defer file.Close()
+		channelClients[channelID][client] = true
+		clientsMu.Unlock()
 
-		// Read first 512 bytes for MIME detection
-		buffer := make([]byte, 512)
-		_, err = file.Read(buffer)
-		if err != nil && err != io.EOF {
-			http.Error(w, "Failed to read file", http.StatusInternalServerError)
-			return
-		}
-		detectedType := http.DetectContentType(buffer)
+		// Remove client when disconnected
+		defer func() {
+			clientsMu.Lock()
+			delete(channelClients[channelID], client)
+			if len(channelClients[channelID]) == 0 {
+				delete(channelClients, channelID) // Cleanup if no clients
+			}
+			clientsMu.Unlock()
+			close(client.Channel)
+		}()
 
-		// Reset file reader after detection
-		if _, err := file.Seek(0, io.SeekStart); err != nil {
-			http.Error(w, "Failed to reset file", http.StatusInternalServerError)
-			return
-		}
+		// Keep connection alive
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
 
-		allowedTypes := map[string]bool{
-			"image/jpeg":      true,
-			"image/png":       true,
-			"video/mp4":       true,
-			"text/csv":        true,
-			"text/plain":      true,
-			"application/zip": true, // XLSX is a ZIP archive
-		}
-		if !allowedTypes[detectedType] {
-			http.Error(w, "Invalid file type", http.StatusBadRequest)
-			return
-		}
+		for {
+			select {
+			case msg, ok := <-client.Channel:
+				if !ok {
+					return // Channel closed, stop listening
+				}
+				fmt.Fprintf(w, "data: %s\n\n", msg)
+				w.(http.Flusher).Flush() // Push update to client
 
-		// Sanitize filename
-		sanitizedFilename := filepath.Base(fileHeader.Filename)
-		fileName := fmt.Sprintf("%s_%s", uuid.New().String(), sanitizedFilename)
-
-		// Upload to Supabase
-		bucketName := "announcements"
-		supabaseStorageURL := fmt.Sprintf("%s/storage/v1", os.Getenv("SUPABASE_URL"))
-		client := storage.NewClient(supabaseStorageURL, os.Getenv("SUPABASE_KEY"), nil)
-		_, err = client.UploadFile(bucketName, fileName, file, storage.FileOptions{
-			ContentType: &detectedType,
-		})
-		if err != nil {
-			log.Printf("Upload failed: %v", err)
-			http.Error(w, "Upload failed", http.StatusInternalServerError)
-			return
-		}
-
-		fileURL := fmt.Sprintf("%s/storage/v1/object/public/%s/%s", os.Getenv("SUPABASE_URL"), bucketName, fileName)
-		response := map[string]string{
-			"message":  "Upload successful",
-			"file_url": fileURL,
-		}
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			log.Printf("Failed to encode response: %v", err)
+			case <-ticker.C:
+				fmt.Fprintf(w, ":\n\n") // Heartbeat
+				w.(http.Flusher).Flush()
+			}
 		}
 	}
+}
+
+func broadcastAnnouncement(announcement Announcement) {
+	jsonData, err := json.Marshal(announcement)
+	if err != nil {
+		log.Println("Error encoding announcement:", err)
+		return
+	}
+
+	// Send only to users subscribed to the specific channel
+	clientsMu.Lock()
+	for client := range channelClients[announcement.ChannelId] {
+		client.Channel <- string(jsonData)
+	}
+	clientsMu.Unlock()
 }
 
 func GetAnnouncements(a *app.App) http.HandlerFunc {

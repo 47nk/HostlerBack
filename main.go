@@ -48,6 +48,7 @@ func main() {
 	announcementGroup := r.PathPrefix("/announcements").Subrouter()
 	{
 		announcementGroup.HandleFunc("/add-announcement", auth.JWTMiddleware(announcement.AddAnnouncement(app))).Methods("POST")
+		announcementGroup.HandleFunc("/stream/{channel_id}", announcement.AnnouncementsSSE(app)).Methods("GET")
 		announcementGroup.HandleFunc("/get-announcements", auth.JWTMiddleware(announcement.GetAnnouncements(app))).Methods("GET")
 		announcementGroup.HandleFunc("/add-channel", auth.JWTMiddleware(announcement.CreateChannel(app))).Methods("POST")
 		announcementGroup.HandleFunc("/get-channels", auth.JWTMiddleware(announcement.GetChannels(app))).Methods("GET")

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -19,8 +20,18 @@ func JWTMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 		// If token is valid, we can add additional checks or extract claims here
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			userID := int64(claims["user_id"].(float64))
-			role := claims["role"].(string)
+			userIDFloat, ok := claims["user_id"].(float64)
+			if !ok {
+				log.Println("user_id is missing or not a valid number")
+				return
+			}
+			userID := int64(userIDFloat)
+
+			role, ok := claims["role"].(string)
+			if !ok {
+				log.Println("role is missing or not a valid string")
+				return
+			}
 			// Store user info in the context
 			ctx := r.Context()
 			ctx = context.WithValue(ctx, "user_id", fmt.Sprint(userID))
