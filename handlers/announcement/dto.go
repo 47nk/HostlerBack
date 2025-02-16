@@ -6,3 +6,7 @@ type CreateChannelReq struct {
 	Type        string `json:"type"`
 	Description string `json:"description"`
 }
+
+type SSEClient struct {
+	Channel chan string
+}
