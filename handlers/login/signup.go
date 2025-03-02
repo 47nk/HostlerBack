@@ -45,7 +45,7 @@ func SignUp(a *app.App) http.HandlerFunc {
 		}
 		userId, err := strconv.ParseInt(userIdStr, 10, 64)
 		if err != nil {
-			http.Error(w, "Invalid user ID", http.StatusBadRequest)
+			http.Error(w, `{"error": "Invalid user ID"}`, http.StatusBadRequest)
 			return
 		}
 
@@ -55,7 +55,7 @@ func SignUp(a *app.App) http.HandlerFunc {
 			return
 		}
 		if req.Username == "" || req.FirstName == "" || req.LastName == "" || req.MobileNumber == "" || req.Role == "" || req.Password == "" {
-			http.Error(w, "Invalid Request Payload", http.StatusInternalServerError)
+			http.Error(w, `{"error": "Invalid Request Payload"}`, http.StatusInternalServerError)
 			return
 		}
 
@@ -64,22 +64,22 @@ func SignUp(a *app.App) http.HandlerFunc {
 			Where("username = ?", req.Username).
 			First(&user)
 		if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
-			http.Error(w, "Error querying users!", http.StatusInternalServerError)
+			http.Error(w, `{"error": "Error querying users!"}`, http.StatusInternalServerError)
 			return
 		}
 		if result.RowsAffected != 0 {
-			http.Error(w, "User with username already exists!", http.StatusInternalServerError)
+			http.Error(w, `{"error": "User with username already exists!"}`, http.StatusInternalServerError)
 			return
 		}
 
 		//check if role exits
 		err = a.DB.Where("role = ? and active = true", req.Role).Find(&userRoleDetails).Error
 		if err != nil {
-			http.Error(w, "Internal Error finding role details!", http.StatusInternalServerError)
+			http.Error(w, `{"error": "Internal Error finding role details!"}`, http.StatusInternalServerError)
 			return
 		}
 		if userRoleDetails.ID == 0 {
-			http.Error(w, "No such Role found!", http.StatusInternalServerError)
+			http.Error(w, `{"error" : "No such Role found!"}`, http.StatusInternalServerError)
 			return
 		}
 
@@ -99,11 +99,16 @@ func SignUp(a *app.App) http.HandlerFunc {
 		err = a.DB.Create(&newUser).Error
 		if err != nil {
 			log.Printf("Error creating new user: %v", err)
-			http.Error(w, "Error creating new user", http.StatusInternalServerError)
+			http.Error(w, `{"error" : "Internal Error creating new user"}`, http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("User Created Successfully!"))
+		w.Write([]byte(`{"success" : "User Created Successfully!"}`))
+	}
+}
+
+func SignUpBulk(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 

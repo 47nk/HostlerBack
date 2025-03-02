@@ -3,9 +3,9 @@ package dashboard
 type CreateTransactionReq struct {
 	Username        string  `json:"username"`
 	TransactionType string  `json:"transaction_type"`
-	Items           int     `json:"items"`
+	Items           int64   `json:"items"`
 	Price           float64 `json:"price"`
-	ExtraItems      int     `json:"extra_items"`
+	ExtraItems      int64   `json:"extra_items"`
 	ExtraPrice      float64 `json:"extra_price"`
 }
 

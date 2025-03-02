@@ -135,3 +135,39 @@ func GetChannels(a *app.App) http.HandlerFunc {
 
 	}
 }
+
+type GetChannelsRequest struct {
+	ChannelIDs []int `json:"channel_ids"`
+}
+
+func GetChannelsById(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req GetChannelsRequest
+
+		// Decode JSON request body
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, `{"error": "Invalid JSON format"}`, http.StatusBadRequest)
+			return
+		}
+
+		if len(req.ChannelIDs) == 0 {
+			http.Error(w, `{"error": "channel_ids array is required"}`, http.StatusBadRequest)
+			return
+		}
+
+		var channels []Channel
+		err := a.DB.Where("id in (?)", req.ChannelIDs).Find(&channels).Error
+		if err != nil {
+			http.Error(w, `{"error": "Internal error in finding Channel(s)"}`, http.StatusInternalServerError)
+		}
+
+		// Set the content type to application/json
+		w.Header().Set("Content-Type", "application/json")
+
+		// Encode and return the bills
+		if err := json.NewEncoder(w).Encode(channels); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
