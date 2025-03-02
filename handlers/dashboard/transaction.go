@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"hostlerBackend/app"
+	"log"
 	"net/http"
 	"time"
 
 	"gorm.io/gorm"
 )
+
+const YYYYMM = "200601"
 
 func CreateTransaction(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -17,12 +20,20 @@ func CreateTransaction(a *app.App) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		if req.Username == "" {
+			http.Error(w, `{"error": "invalid user!"}`, http.StatusBadRequest)
+			return
+		}
+		if req.Items <= 0 {
+			http.Error(w, `{"error": "insufficient item quantity!"}`, http.StatusBadRequest)
+			return
+		}
 		err := a.DB.Transaction(func(tx *gorm.DB) error {
 			var (
 				user         User
 				bills        []Bill
 				billId       int64
-				billingMonth = time.Now().Format("200601") // YYYYMM format
+				billingMonth = time.Now().Format(YYYYMM)
 			)
 
 			err := tx.Where("username = ?", req.Username).First(&user).Error
@@ -59,9 +70,9 @@ func CreateTransaction(a *app.App) http.HandlerFunc {
 			// Create transaction
 			transaction := Transaction{
 				BillId:          billId,
-				Items:           int64(req.Items),
+				Items:           req.Items,
 				Price:           req.Price,
-				ExtraItems:      int64(req.ExtraItems),
+				ExtraItems:      req.ExtraItems,
 				ExtraPrice:      req.ExtraPrice,
 				TransactionType: req.TransactionType,
 			}
@@ -80,7 +91,8 @@ func CreateTransaction(a *app.App) http.HandlerFunc {
 		})
 
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Printf("Internal Error Creating Transaction: %v", err.Error())
+			http.Error(w, `{"error": "Internal Error Creating Transaction"}`, http.StatusInternalServerError)
 			return
 		}
 		// Success response (if everything went well)

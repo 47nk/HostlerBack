@@ -52,6 +52,8 @@ func main() {
 		announcementGroup.HandleFunc("/get-announcements", auth.JWTMiddleware(announcement.GetAnnouncements(app))).Methods("GET")
 		announcementGroup.HandleFunc("/add-channel", auth.JWTMiddleware(announcement.CreateChannel(app))).Methods("POST")
 		announcementGroup.HandleFunc("/get-channels", auth.JWTMiddleware(announcement.GetChannels(app))).Methods("GET")
+		announcementGroup.HandleFunc("/get-channels-by-id", auth.JWTMiddleware(announcement.GetChannelsById(app))).Methods("POST")
+
 	}
 
 	//dashboard group

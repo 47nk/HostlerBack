@@ -2,6 +2,7 @@ package announcement
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hostlerBackend/app"
 	"io"
@@ -63,7 +64,7 @@ func AddAnnouncement(a *app.App) http.HandlerFunc {
 			http.Error(w, `{"error": "Type is required"}`, http.StatusBadRequest)
 			return
 		}
-		if description == "" {
+		if type_ != "text" && description == "" {
 			http.Error(w, `{"error": "Description is required"}`, http.StatusBadRequest)
 			return
 		}
@@ -84,7 +85,7 @@ func AddAnnouncement(a *app.App) http.HandlerFunc {
 			attachment, err := uploadAnnouncementAttachment(a, fileHeader)
 			if err != nil {
 				http.Error(w, `{"error": "Failed to upload attachments"}`, http.StatusBadRequest)
-				return
+				continue
 			}
 			attachments = append(attachments, attachment)
 		}
@@ -158,6 +159,7 @@ func uploadAnnouncementAttachment(a *app.App, fileHeader *multipart.FileHeader) 
 		// Images
 		"image/jpeg": true,
 		"image/png":  true,
+		"image/gif":  true,
 
 		// Videos
 		"video/mp4": true,
@@ -186,8 +188,8 @@ func uploadAnnouncementAttachment(a *app.App, fileHeader *multipart.FileHeader) 
 	}
 
 	if !allowedTypes[detectedType] {
-		log.Printf("Invalid file type: %v", err)
-		return AnnouncementAttachment{}, err
+		log.Printf("Invalid file type: %v", detectedType)
+		return AnnouncementAttachment{}, errors.New("invalid file type")
 	}
 
 	// Sanitize filename
@@ -211,6 +213,7 @@ func uploadAnnouncementAttachment(a *app.App, fileHeader *multipart.FileHeader) 
 
 	fileURL := fmt.Sprintf("%s/storage/v1/object/public/%s/%s", os.Getenv("SUPABASE_URL"), bucketName, fileName)
 	response := AnnouncementAttachment{
+		FileName: fileHeader.Filename,
 		FileType: detectedType,
 		FilePath: fileURL,
 		FileSize: fileHeader.Size,

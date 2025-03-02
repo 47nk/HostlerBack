@@ -23,6 +23,7 @@ func (Announcement) TableName() string {
 type AnnouncementAttachment struct {
 	ID             uint      `gorm:"primaryKey"`
 	AnnouncementID uint      `gorm:"index" json:"announcement_id"`
+	FileName       string    `gorm:"size:255" json:"file_name"`
 	FilePath       string    `gorm:"size:255" json:"file_path"`
 	FileType       string    `gorm:"size:50" json:"file_type"`
 	FileSize       int64     `json:"file_size"`
