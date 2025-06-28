@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"hostlerBackend/app"
-	"log"
 	"net/http"
 	"time"
 
@@ -38,10 +37,10 @@ func CreateTransaction(a *app.App) http.HandlerFunc {
 
 			err := tx.Where("username = ?", req.Username).First(&user).Error
 			if err != nil && err != gorm.ErrRecordNotFound {
-				return fmt.Errorf("user retrieval error: %w", err)
+				return fmt.Errorf("User retrieval error: %w", err)
 			}
 			if user.ID == 0 {
-				return fmt.Errorf("user not found")
+				return fmt.Errorf("User not found")
 			}
 
 			// Find pending bills
@@ -91,8 +90,7 @@ func CreateTransaction(a *app.App) http.HandlerFunc {
 		})
 
 		if err != nil {
-			log.Printf("Internal Error Creating Transaction: %v", err.Error())
-			http.Error(w, `{"error": "Internal Error Creating Transaction"}`, http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf(`{"error": "%s"}`, err.Error()), http.StatusInternalServerError)
 			return
 		}
 		// Success response (if everything went well)

@@ -62,8 +62,13 @@ func main() {
 		dashboardGroup.HandleFunc("/get-transactions", auth.JWTMiddleware(dashboard.GetTransactions(app))).Methods("GET")
 		dashboardGroup.HandleFunc("/get-bills", auth.JWTMiddleware(dashboard.GetBills(app))).Methods("GET")
 		dashboardGroup.HandleFunc("/get-dues", auth.JWTMiddleware(dashboard.GetDueDetails(app))).Methods("GET")
-		dashboardGroup.HandleFunc("/create-transaction", auth.JWTMiddleware(dashboard.CreateTransaction(app))).Methods("POST")
 
+	}
+
+	//Admin group
+	adminGroup := r.PathPrefix("/admin").Subrouter()
+	{
+		adminGroup.HandleFunc("/create-transaction", auth.JWTMiddleware(dashboard.CreateTransaction(app))).Methods("POST")
 	}
 
 	//cors
