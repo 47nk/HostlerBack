@@ -15,6 +15,7 @@ import (
 
 func TestAPI() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Test API endpoint hit")
 		w.Write([]byte("working fine!"))
 	}
 }
