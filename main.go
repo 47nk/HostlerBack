@@ -1,10 +1,10 @@
 package main
 
 import (
+	"hostlerBackend/app"
 	"hostlerBackend/auth"
 	"hostlerBackend/db"
 	"hostlerBackend/handlers/announcement"
-	"hostlerBackend/handlers/app"
 	"hostlerBackend/handlers/dashboard"
 	"hostlerBackend/handlers/login"
 	"log"
@@ -39,18 +39,21 @@ func main() {
 	//users group
 	userGroup := r.PathPrefix("/users").Subrouter()
 	{
-		userGroup.HandleFunc("/{id}", auth.JWTMiddleware(login.UpdateUser(app))).Methods("PUT")
 		userGroup.HandleFunc("/login", login.Login(app)).Methods("POST")
-		userGroup.HandleFunc("/signup", login.SignUp(app)).Methods("POST")
+		userGroup.HandleFunc("/{id}", auth.JWTMiddleware(login.UpdateUser(app))).Methods("PUT")
+		userGroup.HandleFunc("/signup", auth.JWTMiddleware(login.SignUp(app))).Methods("POST")
 	}
 
 	//announcement group
 	announcementGroup := r.PathPrefix("/announcements").Subrouter()
 	{
 		announcementGroup.HandleFunc("/add-announcement", auth.JWTMiddleware(announcement.AddAnnouncement(app))).Methods("POST")
+		announcementGroup.HandleFunc("/stream/{channel_id}", announcement.AnnouncementsSSE(app)).Methods("GET")
 		announcementGroup.HandleFunc("/get-announcements", auth.JWTMiddleware(announcement.GetAnnouncements(app))).Methods("GET")
 		announcementGroup.HandleFunc("/add-channel", auth.JWTMiddleware(announcement.CreateChannel(app))).Methods("POST")
 		announcementGroup.HandleFunc("/get-channels", auth.JWTMiddleware(announcement.GetChannels(app))).Methods("GET")
+		announcementGroup.HandleFunc("/get-channels-by-id", auth.JWTMiddleware(announcement.GetChannelsById(app))).Methods("POST")
+
 	}
 
 	//dashboard group

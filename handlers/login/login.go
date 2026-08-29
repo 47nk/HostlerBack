@@ -2,7 +2,7 @@ package login
 
 import (
 	"encoding/json"
-	"hostlerBackend/handlers/app"
+	"hostlerBackend/app"
 	"net/http"
 	"os"
 	"time"
@@ -10,16 +10,6 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 )
-
-type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-type CustomClaims struct {
-	UserID int64 `json:"user_id"`
-	jwt.RegisteredClaims
-}
 
 func Login(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +25,10 @@ func Login(a *app.App) http.HandlerFunc {
 		}
 		//fetch user
 		var user []User
-		err := a.DB.Where("username = ?", req.Username).Find(&user).Error
+		err := a.DB.
+			Preload("UserRole").
+			Where("username = ?", req.Username).
+			Find(&user).Error
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -53,7 +46,7 @@ func Login(a *app.App) http.HandlerFunc {
 			return
 		}
 
-		tokenString, err := GenerateJWT(user[0].ID)
+		tokenString, err := GenerateJWT(user[0].ID, user[0].UserRole.Role)
 		if err != nil {
 			http.Error(w, "Error generating token", http.StatusInternalServerError)
 			return
@@ -80,9 +73,10 @@ func Login(a *app.App) http.HandlerFunc {
 	}
 }
 
-func GenerateJWT(userId int64) (string, error) {
+func GenerateJWT(userId int64, role string) (string, error) {
 	claims := CustomClaims{
 		UserID: userId,
+		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
