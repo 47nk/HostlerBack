@@ -30,19 +30,19 @@ func Login(a *app.App) http.HandlerFunc {
 			Where("username = ?", req.Username).
 			Find(&user).Error
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		if len(user) == 0 {
-			http.Error(w, "OOPS! User Not Found", http.StatusInternalServerError)
+			http.Error(w, "OOPS! User Not Found", http.StatusNotFound)
 			return
 		}
 
 		//validate password
 		err = bcrypt.CompareHashAndPassword([]byte(user[0].Password), []byte(req.Password))
 		if err != nil {
-			http.Error(w, "OOPS! Wrong Password", http.StatusInternalServerError)
+			http.Error(w, "OOPS! Wrong Password", http.StatusUnauthorized)
 			return
 		}
 
