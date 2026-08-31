@@ -25,3 +25,8 @@ type SignupRequest struct {
 type UpdateUserRequest struct {
 	FirstName string `json:"first_name"`
 }
+
+type SignUpResponse struct {
+	Error   string `json:"error,omitempty"`
+	Success string `json:"success,omitempty"`
+}

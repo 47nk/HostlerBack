@@ -15,12 +15,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type apiResponse struct {
-	Error   string `json:"error,omitempty"`
-	Success string `json:"success,omitempty"`
-}
-
-func writeJSON(w http.ResponseWriter, status int, response apiResponse) {
+func writeJSON(w http.ResponseWriter, status int, response SignUpResponse) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -62,12 +57,12 @@ func SignUp(a *app.App) http.HandlerFunc {
 		)
 		userID, ok := requireAdmin(r)
 		if !ok {
-			writeJSON(w, http.StatusForbidden, apiResponse{Error: "Only an authenticated admin can onboard new users"})
+			writeJSON(w, http.StatusForbidden, SignUpResponse{Error: "Only an authenticated admin can onboard new users"})
 			return
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, http.StatusBadRequest, apiResponse{Error: "Invalid JSON request body"})
+			writeJSON(w, http.StatusBadRequest, SignUpResponse{Error: "Invalid JSON request body"})
 			return
 		}
 		req.Username = strings.TrimSpace(req.Username)
@@ -76,7 +71,7 @@ func SignUp(a *app.App) http.HandlerFunc {
 		req.MobileNumber = strings.TrimSpace(req.MobileNumber)
 		req.Role = strings.TrimSpace(req.Role)
 		if req.Username == "" || req.FirstName == "" || req.LastName == "" || req.MobileNumber == "" || req.Role == "" || req.Password == "" {
-			writeJSON(w, http.StatusBadRequest, apiResponse{Error: "username, first_name, last_name, mobile_num, role, and password are required"})
+			writeJSON(w, http.StatusBadRequest, SignUpResponse{Error: "username, first_name, last_name, mobile_num, role, and password are required"})
 			return
 		}
 
@@ -85,29 +80,29 @@ func SignUp(a *app.App) http.HandlerFunc {
 			First(&user)
 		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			log.Printf("Error querying user %q: %v", req.Username, result.Error)
-			writeJSON(w, http.StatusInternalServerError, apiResponse{Error: "Error querying users"})
+			writeJSON(w, http.StatusInternalServerError, SignUpResponse{Error: "Error querying users"})
 			return
 		}
 		if result.RowsAffected != 0 {
-			writeJSON(w, http.StatusConflict, apiResponse{Error: "User with username already exists"})
+			writeJSON(w, http.StatusConflict, SignUpResponse{Error: "User with username already exists"})
 			return
 		}
 
 		err := a.DB.Where("role = ? AND active = ?", req.Role, true).First(&userRoleDetails).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			writeJSON(w, http.StatusBadRequest, apiResponse{Error: "No active role found"})
+			writeJSON(w, http.StatusBadRequest, SignUpResponse{Error: "No active role found"})
 			return
 		}
 		if err != nil {
 			log.Printf("Error querying role %q: %v", req.Role, err)
-			writeJSON(w, http.StatusInternalServerError, apiResponse{Error: "Error finding role details"})
+			writeJSON(w, http.StatusInternalServerError, SignUpResponse{Error: "Error finding role details"})
 			return
 		}
 
 		password, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
 			log.Printf("Error hashing password: %v", err)
-			writeJSON(w, http.StatusInternalServerError, apiResponse{Error: "Could not secure password"})
+			writeJSON(w, http.StatusInternalServerError, SignUpResponse{Error: "Could not secure password"})
 			return
 		}
 		newUser := User{
@@ -124,10 +119,10 @@ func SignUp(a *app.App) http.HandlerFunc {
 		err = a.DB.Create(&newUser).Error
 		if err != nil {
 			log.Printf("Error creating new user: %v", err)
-			writeJSON(w, http.StatusInternalServerError, apiResponse{Error: "Error creating new user"})
+			writeJSON(w, http.StatusInternalServerError, SignUpResponse{Error: "Error creating new user"})
 			return
 		}
-		writeJSON(w, http.StatusCreated, apiResponse{Success: "User created successfully"})
+		writeJSON(w, http.StatusCreated, SignUpResponse{Success: "User created successfully"})
 	}
 }
 
@@ -142,7 +137,7 @@ func UpdateUser(a *app.App) http.HandlerFunc {
 		// change another user's details.
 		adminID, ok := requireAdmin(r)
 		if !ok {
-			writeJSON(w, http.StatusForbidden, apiResponse{
+			writeJSON(w, http.StatusForbidden, SignUpResponse{
 				Error: "Only an authenticated admin can update users",
 			})
 			return
@@ -150,7 +145,7 @@ func UpdateUser(a *app.App) http.HandlerFunc {
 
 		var req UpdateUserRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, http.StatusBadRequest, apiResponse{
+			writeJSON(w, http.StatusBadRequest, SignUpResponse{
 				Error: "Invalid JSON request body",
 			})
 			return
@@ -160,7 +155,7 @@ func UpdateUser(a *app.App) http.HandlerFunc {
 		req.FirstName = strings.TrimSpace(req.FirstName)
 
 		if req.FirstName == "" {
-			writeJSON(w, http.StatusBadRequest, apiResponse{
+			writeJSON(w, http.StatusBadRequest, SignUpResponse{
 				Error: "first_name is required",
 			})
 			return
@@ -172,14 +167,14 @@ func UpdateUser(a *app.App) http.HandlerFunc {
 		var user User
 		if err := a.DB.First(&user, id).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				writeJSON(w, http.StatusNotFound, apiResponse{
+				writeJSON(w, http.StatusNotFound, SignUpResponse{
 					Error: "User not found",
 				})
 				return
 			}
 
 			log.Printf("Error finding user %s: %v", id, err)
-			writeJSON(w, http.StatusInternalServerError, apiResponse{
+			writeJSON(w, http.StatusInternalServerError, SignUpResponse{
 				Error: "Could not find user",
 			})
 			return
@@ -192,13 +187,13 @@ func UpdateUser(a *app.App) http.HandlerFunc {
 
 		if err := a.DB.Save(&user).Error; err != nil {
 			log.Printf("Error updating user %s: %v", id, err)
-			writeJSON(w, http.StatusInternalServerError, apiResponse{
+			writeJSON(w, http.StatusInternalServerError, SignUpResponse{
 				Error: "Could not update user",
 			})
 			return
 		}
 
-		writeJSON(w, http.StatusOK, apiResponse{
+		writeJSON(w, http.StatusOK, SignUpResponse{
 			Success: "User updated successfully",
 		})
 	}
